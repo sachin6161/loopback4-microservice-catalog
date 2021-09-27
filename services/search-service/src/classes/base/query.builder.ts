@@ -1,8 +1,8 @@
 import {AnyObject, DataObject} from '@loopback/repository';
 import {HttpErrors, Model} from '@loopback/rest';
+import {Errors} from '../../const';
 import {SearchQuery, SearchResult} from '../../models';
 import {ColumnMap, isSearchableModel, SearchableModel} from '../../types';
-import {Errors} from '../../const';
 
 export abstract class SearchQueryBuilder<T extends Model> {
   protected baseQueryList: string[];
@@ -62,14 +62,24 @@ export abstract class SearchQueryBuilder<T extends Model> {
     if (this.query.limitByType) {
       this.baseQueryList = this.baseQueryList.map(q => `${q} ${orderQuery}`);
     }
-    this.orderQuery = orderQuery;
+    if (this.baseQueryList.length === 1 && this.query.limitByType) {
+      this.orderQuery = '';
+    } else {
+      this.orderQuery = orderQuery;
+    }
   }
 
   build(models: (SearchableModel<T> | typeof Model)[], type?: typeof Model) {
     if (!this.query.match) {
       throw new HttpErrors.BadRequest(Errors.MISSING_MATCH);
     }
-    return [this.queryBuild(models, type), this.paramsBuild(this.query.match)];
+    if (!(models && models.length > 0)) {
+      throw new HttpErrors.BadRequest(Errors.NO_COLUMNS_TO_MATCH);
+    }
+    return {
+      query: this.queryBuild(models, type),
+      params: this.paramsBuild(this.query.match),
+    };
   }
 
   paramsBuild(param: string): AnyObject | Array<AnyObject | string> {
@@ -91,9 +101,9 @@ export abstract class SearchQueryBuilder<T extends Model> {
     ) as (keyof T)[];
     models.forEach(model => {
       if (isSearchableModel(model)) {
-        this.search(model.model.name, model.columns);
+        this.search(model.model.modelName, model.columns);
       } else {
-        this.search(model.name, defaultColumns);
+        this.search(model.modelName, defaultColumns);
       }
     });
     this.order(defaultColumns);

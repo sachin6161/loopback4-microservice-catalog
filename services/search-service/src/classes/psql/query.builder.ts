@@ -1,4 +1,6 @@
 import {AnyObject, DataObject, Model} from '@loopback/repository';
+import {HttpErrors} from '@loopback/rest';
+import {Errors} from '../../const';
 import {SearchQuery} from '../../models';
 import {ColumnMap} from '../../types';
 import {SearchQueryBuilder} from '../base';
@@ -23,10 +25,14 @@ export class PsqlQueryBuilder<T extends Model> extends SearchQueryBuilder<T> {
         .join(', ');
     }
 
+    if (!columnList) {
+      throw new HttpErrors.BadRequest(Errors.NO_COLUMNS_TO_MATCH);
+    }
+
     this.baseQueryList.push(
-      `SELECT ${selectors}, '${model}' as source, ts_rank_cd(to_tsvector(${columnList}), to_tsquery($1)) as rank from ${
+      `SELECT ${selectors}, '${model}' as source, ts_rank_cd(to_tsvector(${columnList}), plainto_tsquery($1)) as rank from ${
         this.schema || 'public'
-      }.${model} where to_tsvector(${columnList}) @@ to_tsquery($1)`,
+      }.${model} where to_tsvector(${columnList}) @@ plainto_tsquery($1)`,
     );
   }
 }

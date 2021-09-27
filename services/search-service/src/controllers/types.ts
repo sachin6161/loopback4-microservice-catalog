@@ -1,4 +1,6 @@
-import {Model} from '@loopback/repository';
+import {Getter, Model} from '@loopback/repository';
+import {IAuthUserWithPermissions} from '@sourceloop/core';
+import {SearchQuery} from '../models';
 import {SearchFunctionType, SearchServiceConfig} from '../types';
 
 export interface SearchControllerBase<T extends Model> {
@@ -10,10 +12,9 @@ export interface SearchControllerBase<T extends Model> {
    * @param query search query
    */
   search(
-    query: string,
-    limit?: number,
-    order?: string,
-    limitByType?: boolean,
+    query: SearchQuery,
+    saveInRecents: boolean,
+    getUser: Getter<IAuthUserWithPermissions>,
   ): Promise<T[]>;
 }
 

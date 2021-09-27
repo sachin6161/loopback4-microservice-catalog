@@ -6,8 +6,14 @@ import {
   inject,
   ProviderMap,
 } from '@loopback/core';
-import {Class, Model, Repository} from '@loopback/repository';
-import {RestApplication} from '@loopback/rest';
+import {
+  Class,
+  Model,
+  ModelDefinition,
+  repository,
+  Repository,
+} from '@loopback/repository';
+import {HttpErrors, RestApplication} from '@loopback/rest';
 import {
   BearerVerifierBindings,
   BearerVerifierComponent,
@@ -21,7 +27,7 @@ import {
   AuthorizationBindings,
   AuthorizationComponent,
 } from 'loopback4-authorization';
-import {DEFAULT_COLUMNS} from './const';
+import {DEFAULT_COLUMNS, Errors} from './const';
 import {defineSearchController} from './controllers';
 import {SearchControllerCtor} from './controllers/types';
 import {SearchServiceBindings} from './keys';
@@ -29,6 +35,10 @@ import {SearchQuery, SearchResult} from './models';
 import {MySqlQueryBuilder, PsqlQueryBuilder} from './classes';
 import {SearchProvider} from './services';
 import {SearchServiceConfig} from './types';
+import {RecentSearchRepository} from './repositories/recent-search.repository';
+import {SearchQueryRepository} from './repositories/search-query.repository';
+import {isSearchableModel} from '.';
+import {defineModelClass} from './utils';
 
 export class SearchServiceComponent implements Component {
   constructor(
@@ -42,7 +52,6 @@ export class SearchServiceComponent implements Component {
 
     // Mount core component
     this.application.component(CoreComponent);
-
     if (!this.config?.useCustomSequence) {
       this.setupSequence();
     }
@@ -70,14 +79,22 @@ export class SearchServiceComponent implements Component {
       if (!this.config.useCustomSequence) {
         this.setupSequence();
       }
+      const models = this.config.models.map(model => {
+        if (isSearchableModel(model)) {
+          return model.model.name;
+        } else {
+          return model.name;
+        }
+      });
       if (this.config.type) {
         controllerCtor = defineSearchController(
-          this.config.type,
+          this.createResultModel(this.config.type, models),
           this.config.controller,
         );
       } else if (this.config.controller) {
+        this.models = [SearchResult];
         controllerCtor = defineSearchController(
-          SearchResult,
+          this.createResultModel(SearchResult, models),
           this.config.controller,
         );
       } else {
@@ -87,8 +104,10 @@ export class SearchServiceComponent implements Component {
 
     inject(SearchServiceBindings.SearchFunction)(controllerCtor, undefined, 0);
     inject(SearchServiceBindings.Config)(controllerCtor, undefined, 1);
+    repository(RecentSearchRepository)(controllerCtor, undefined, 2);
 
     this.controllers = [controllerCtor];
+    this.repositories = [RecentSearchRepository, SearchQueryRepository];
   }
 
   providers: ProviderMap = {};
@@ -119,6 +138,12 @@ export class SearchServiceComponent implements Component {
    */
 
   setupSequence() {
+    if (
+      !this.config.controller?.authenticate ||
+      !this.config.controller.authorizations
+    ) {
+      throw new HttpErrors.InternalServerError(Errors.AUTHENTICATION_SETUP);
+    }
     this.application.sequence(ServiceSequence);
 
     // Mount authentication component for default sequence
@@ -135,5 +160,24 @@ export class SearchServiceComponent implements Component {
       allowAlwaysPaths: ['/explorer'],
     });
     this.application.component(AuthorizationComponent);
+  }
+
+  createResultModel(base: typeof Model, models: string[]) {
+    const modelDef = new ModelDefinition({
+      name: 'SearchResults',
+      properties: {
+        rank: {
+          type: 'Number',
+          required: true,
+        },
+        source: {
+          type: 'string',
+          jsonSchema: {
+            enum: models,
+          },
+        },
+      },
+    });
+    return defineModelClass<typeof base>(base, modelDef);
   }
 }

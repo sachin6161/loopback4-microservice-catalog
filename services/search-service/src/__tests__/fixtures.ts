@@ -2,7 +2,7 @@ import {Entity, property, model} from '@loopback/repository';
 import {SearchQueryBuilder} from '../classes';
 import {ColumnMap} from '../types';
 
-const TestQueryStmt = (columns: string, name: string, where: string) =>
+const testQueryStmt = (columns: string, name: string, where: string) =>
   `SELECT ${columns} from ${name} where ${where}`;
 
 @model({})
@@ -62,6 +62,6 @@ export class TestQueryBuilder extends SearchQueryBuilder<TestSearchModel> {
         .map(c => `${c} = $1`)
         .join(', ');
     }
-    this.baseQueryList.push(TestQueryStmt(columnList, modelName, where));
+    this.baseQueryList.push(testQueryStmt(columnList, modelName, where));
   }
 }

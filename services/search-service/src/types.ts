@@ -1,11 +1,9 @@
 import {Constructor} from '@loopback/core';
-import {DataObject, Model} from '@loopback/repository';
+import {Model} from '@loopback/repository';
 import {SearchResult} from './models';
 import {SearchQuery} from './models/search-query.model';
 
-export type SearchFunctionType<T> = (
-  query: DataObject<SearchQuery>,
-) => Promise<T[]>;
+export type SearchFunctionType<T> = (query: SearchQuery) => Promise<T[]>;
 
 export type SearchableModelsService = {
   add: (model: typeof Model) => Promise<void>;
@@ -33,6 +31,9 @@ export type SearchControllerConfig = {
   name?: string;
   basePath: string;
   authorizations?: string[];
+  authenticate?: boolean;
+  recentCount?: number;
+  recents?: boolean;
 };
 
 export class SearchableModel<T extends Model> {

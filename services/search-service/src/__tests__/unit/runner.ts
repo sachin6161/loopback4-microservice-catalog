@@ -2,7 +2,7 @@ import {SearchQueryBuilder} from '../../classes';
 import {SearchQuery} from '../../models';
 import {DataObject} from '@loopback/repository';
 import {SearchableModelsList} from '../../types';
-import {TestSearched, TestSearchedCustom, TestSearchModel} from '../fixtures';
+import {TestSearchModel} from '../fixtures';
 import {BuilderTest} from './types';
 
 export function buildTestsRunner(
@@ -13,17 +13,8 @@ export function buildTestsRunner(
   tests: Array<BuilderTest>,
   match: string,
   expect: Internal,
+  models: SearchableModelsList<TestSearchModel>,
 ) {
-  const models: SearchableModelsList<TestSearchModel> = [
-    TestSearched,
-    {
-      model: TestSearchedCustom,
-      columns: {
-        description: 'about',
-        name: 'identifier',
-      },
-    },
-  ];
   return () => {
     tests.forEach(test => {
       it(test.it, () => {
@@ -40,10 +31,10 @@ export function buildTestsRunner(
             expect(err.message).to.be.equal(test.message);
           }
         } else {
-          expect(builder.build(models, TestSearchModel)).to.deepEqual([
-            test.expects,
-            [match],
-          ]);
+          expect(builder.build(models, TestSearchModel)).to.deepEqual({
+            query: test.expects,
+            params: [match],
+          });
         }
       });
     });

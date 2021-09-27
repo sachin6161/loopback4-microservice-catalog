@@ -78,7 +78,11 @@ It sets the models and columns over which the search is performed. It's value is
 Configuration for the controller, it accepts three properties -
 - name - name of the Controller, by default it is SearchController
 - basePath - basePath of the controller, be default it is {name}/search, if even the name is not provided, it is just /search
+- authentication - if authentication should be required or not, this must be enable to use authorizations
 - authorizations - list of string corresponding to the permissions required for the search API, by default equal to `['*']`(allowed for everyone).
+- recents - provider an endpoint to fetch recent searches. authentication must be enabled to use this.
+- recentCount - number of recent searches to be saved for each user, default value is 5.
+
 
 ### Setting up a `DataSource`  
 
